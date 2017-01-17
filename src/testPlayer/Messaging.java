@@ -8,26 +8,69 @@ public class Messaging extends Globals{
     public static int indexAttackHere = 2;
     public static int indexRallyHere = 3;
     public static int indexBuildCount = 4;
+    private static int indexLastLeaderSignal;
 
     public static int indexLastUpdateToUnitCounts = 24;
     public static int indexUnitCounts = 25;
     public static int indexTreeCount = 26;
-    public static int indexTotalUnitCount = 27;
+
 
     public static int indexEnemyUnitCounts = 28;
     public static int indexEnemyTreeCount = 29;
     public static int indexEnemyTotalUnitCount = 30;
+
+    public static int indexArchonCount = 31;
+    public static int indexGardenerCount = 32;
+    public static int indexSoldierCount = 33;
+    public static int indexTankCount = 34;
+    public static int indexScoutCount = 35;
+    public static int indexLumberjackCount = 36;
+
+
 
     public static int indexNeutralTreeCount = 40;
     public static int indexEconomyStrength = 41;
 
     public static int indexMapEdges = 42;
 
-    //encode unit counts
-    //Counts friendly Archons up to 8, Gardeners up to 64
-    //Counts soldiers (<128), tanks(<128), scouts (<64)
-    //lumberjacks(<128),trees(<256),totalUnitCont(<512)
 
+    public static void leaderElection() throws GameActionException {
+        if (rc.readBroadcast(indexLastLeaderSignal) < roundNum) {
+            iAmLeader = true;
+            rc.broadcast(indexLastLeaderSignal, roundNum);
+        }
+    }
+
+    public static void raiseHandForUnitCounts() throws GameActionException {
+        if (rc.readBroadcast(indexLastUpdateToUnitCounts) < roundNum) {
+            rc.broadcast(indexLastUpdateToUnitCounts, roundNum);
+            rc.broadcast(indexArchonCount, 1);
+            rc.broadcast(indexGardenerCount, 1);
+            rc.broadcast(indexSoldierCount, 1);
+            rc.broadcast(indexTankCount, 1);
+            rc.broadcast(indexScoutCount, 1);
+            rc.broadcast(indexLumberjackCount, 1);
+        } else {
+            if (myType == RobotType.ARCHON) {
+                rc.broadcast(indexArchonCount, rc.readBroadcast(indexArchonCount) + 1);
+            } else if (myType == RobotType.GARDENER) {
+                rc.broadcast(indexGardenerCount, rc.readBroadcast(indexGardenerCount) + 1);
+            } else if (myType == RobotType.SOLDIER) {
+                rc.broadcast(indexSoldierCount, rc.readBroadcast(indexSoldierCount) + 1);
+            } else if (myType == RobotType.TANK) {
+                rc.broadcast(indexTankCount, rc.readBroadcast(indexTankCount) + 1);
+            } else if (myType == RobotType.SCOUT) {
+                rc.broadcast(indexScoutCount, rc.readBroadcast(indexScoutCount) + 1);
+            } else if (myType == RobotType.LUMBERJACK) {
+                rc.broadcast(indexLumberjackCount, rc.readBroadcast(indexLumberjackCount) + 1);
+            }
+        }
+    }
+
+    //encode unit counts
+    //Counts friendly Archons up to 15, Gardeners up to 127
+    //Counts soldiers (<255), tanks(<255), scouts (<127)
+    //lumberjacks(<255)
     public static int intFromUnitCounts(int[] unitsCounted) {
         //AAAGGGGGGScScScScScScSSSSSSSTTTTTTLLLLLL
         int archons = unitsCounted[0];
@@ -36,12 +79,12 @@ public class Messaging extends Globals{
         int soldiers = unitsCounted[3];
         int tanks = unitsCounted[4];
         int lumberjacks = unitsCounted[5];
-        if (archons > 8) {archons = 8;}
-        if (gardeners > 128) {gardeners = 128;}
-        if (scouts > 64) {scouts = 64;}
-        if (soldiers > 128) {soldiers = 128;}
-        if (tanks > 128) {tanks = 128;}
-        if (lumberjacks > 128) {lumberjacks = 128;}
+        if (archons > 15) {archons = 15;}
+        if (gardeners > 255) {gardeners = 255;}
+        if (scouts > 127) {scouts = 127;}
+        if (soldiers > 255) {soldiers = 255;}
+        if (tanks > 255) {tanks = 255;}
+        if (lumberjacks > 255) {lumberjacks = 255;}
         return (archons << 29) | (gardeners << 26) | (scouts << 21) | (soldiers << 14) | (tanks << 7) | (lumberjacks);
     }
 
@@ -58,7 +101,7 @@ public class Messaging extends Globals{
 
 
     //posts unit counts to messageboard, costs 20Bytecode.
-    public static void postUnitCounts(Team team, int unitsMaskToSend) throws GameActionException{
+    public static void postEncodedUnitCounts(Team team, int unitsMaskToSend) throws GameActionException{
         int channelToUse = 999;
         int unitsToPost = unitsMaskToSend;
         if (team == myTeam) {

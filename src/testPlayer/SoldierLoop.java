@@ -7,7 +7,6 @@ public class SoldierLoop extends Globals {
 
     private static MapLocation destination;
     private static MapLocation target;
-    private static BulletInfo[] bulletsKnown;
 
 
     public static void loop() {
@@ -31,33 +30,40 @@ public class SoldierLoop extends Globals {
     private static void runBehaviour() throws GameActionException {
         // processSignals();
         //FastMath.initRand(rc);
+        commonFunctions();
 
-        RobotInfo[] enemyBots = rc.senseNearbyRobots(sensorRadius, enemyTeam);
-        BulletInfo[] bullets = rc.senseNearbyBullets(9);
         TreeInfo[] nearbyTrees = rc.senseNearbyTrees(strideLength, Team.NEUTRAL);
 
         tryShakingTrees(nearbyTrees);
 
-        if (enemyBots.length > 0) {
-            MapLocation enemyLoc = enemyBots[0].getLocation();
-            MapLocation nearDest = chooseSafeLocation(bullets,enemyLoc,1);
-            if (rc.canMove(nearDest)) {
-                rc.move(nearDest);
-            } else {
+        if (visibleEnemies.length > 0) {
+            MapLocation enemyLoc = visibleEnemies[0].getLocation();
+            MapLocation nearDest = chooseSafeLocation(enemyLoc,1);
+            if (!tryMove(nearDest, 30, 1)) {
                 Direction random = randomDirection();
-                tryMove(random, 45, 1);
+                MapLocation nextMove = here.add(random, 1);
+                tryMove(nextMove, 45, 1);
             }
-            if (here.distanceTo(enemyLoc) < 6 && rc.canFireSingleShot()) {
-                rc.fireSingleShot(here.directionTo(enemyLoc));
+            if (visibleEnemies.length - visibleAllies.length < 4) {
+                if (here.distanceTo(enemyLoc) < 6 && rc.canFireSingleShot()) {
+                    here = rc.getLocation();
+                    rc.fireSingleShot(here.directionTo(enemyLoc));
+                }
+            } else {
+                if (here.distanceTo(enemyLoc) < 6 && rc.canFireTriadShot()) {
+                    here = rc.getLocation();
+                    rc.fireTriadShot(here.directionTo(enemyLoc));
+                }
             }
         } else {
-            MapLocation toArchons = theirArchonStartCoM;
-            MapLocation farDest = chooseSafeLocation(bullets,toArchons,1);
+            MapLocation toArchons = theirArchonStartLocs[(int)(Math.random()*archonStartCount)];
+            MapLocation farDest = chooseSafeLocation(toArchons,0.5f);
             if (rc.canMove(farDest)) {
                 rc.move(farDest);
             } else {
                 Direction random = randomDirection();
-                tryMove(random, 45, 2);
+                MapLocation nextMove = here.add(random, 1);
+                tryMove(nextMove, 45, 2);
             }
         }
     }

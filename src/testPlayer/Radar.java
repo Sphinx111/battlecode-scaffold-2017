@@ -33,7 +33,7 @@ public class Radar extends Globals{
     private static int neutralTrees = 0;
 
     // countBuiltUnits counts up type of units in argument, then writes totals to the messages array
-    public static void countBuiltUnits(RobotInfo[] sensedUnits) throws GameActionException {
+    public static void countSensedUnits(RobotInfo[] sensedUnits) throws GameActionException {
         for (RobotInfo info : sensedUnits) {
             if (info.type == RobotType.ARCHON) {
                 archons++;
@@ -51,8 +51,8 @@ public class Radar extends Globals{
         }
         totalUnitsCount = archons + gardeners + soldiers + tanks + scouts + lumberjacks;
         armyStrength = (archons * archonValue) + (gardeners * gardenerValue) + (soldiers * soldierValue) + (tanks * tankValue) + (scouts * scoutValue) + (lumberjacks * lumberjackValue);
-        economyStrength = (trees * treeValue) + 20;
     }
+
 
     public static int[] getUnitCountsFromRadar() {
         int[] unitCounts = new int[6];
@@ -64,6 +64,8 @@ public class Radar extends Globals{
         unitCounts[5] = lumberjacks;
         return unitCounts;
     }
+
+
 
     public static void addUnitsToRadar() {
 

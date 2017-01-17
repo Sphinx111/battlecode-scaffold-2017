@@ -12,7 +12,6 @@ public class ArchonLoop extends Globals {
     private static MapLocation currentDest;
     private static Direction currentHeading;
     private static boolean isLeader;
-    private static BulletInfo[] nearbyBullets;
 
     private static TreeInfo[] knownTreesHoldingArchons;
     private static int buildCount = 0;
@@ -41,14 +40,12 @@ public class ArchonLoop extends Globals {
 
     private static void runBehaviour() throws GameActionException {
         //TODO: processSignals();
+        commonFunctions();
         buildCount = rc.readBroadcast(Messaging.indexBuildCount);
 
         //TODO: Check map edges here if game is underway (20-50 turns)
 
-        visibleEnemies = rc.senseNearbyRobots(sensorRadius, enemyTeam);
-        visibleAllies = rc.senseNearbyRobots (sensorRadius, myTeam);
         neutralTrees = rc.senseNearbyTrees(sensorRadius, Team.NEUTRAL);
-        nearbyBullets = rc.senseNearbyBullets(9);
 
         //If unit counts on messageboard are more than 1 turn out of date, update them.
         /*if (rc.readBroadcast(Messaging.indexLastUpdateToUnitCounts) < rc.getRoundNum() -1) {
@@ -76,9 +73,11 @@ public class ArchonLoop extends Globals {
     //If game conditions are right (constants set in MutableGameData), build a Gardener
     private static void tryBuild() throws GameActionException {
         if (buildCount % 8 == 0 && rc.hasRobotBuildRequirements(RobotType.GARDENER)) {
-            for (int x = 0; x < 4; x++) {
-                if (rc.canHireGardener(dirs[x])) {
-                    rc.hireGardener(dirs[x]);
+            Direction awayEnemy = theirArchonStartCoM.directionTo(ourArchonStartCoM);
+            for (int x = 0; x < 6; x++) {
+                awayEnemy = awayEnemy.rotateLeftDegrees(x * 60);
+                if (rc.canHireGardener(awayEnemy)) {
+                    rc.hireGardener(awayEnemy);
                     ++buildCount;
                     rc.broadcast(Messaging.indexBuildCount, 1 + rc.readBroadcast(Messaging.indexBuildCount));
                     break;
@@ -93,18 +92,14 @@ public class ArchonLoop extends Globals {
 
     private static void chooseDest() throws GameActionException {
         if (currentDest != null ) {
-            if (currentDest == here) {
-                currentDest = null;
-                currentHeading = null;
-            }
+
         } else {
             currentDest = ourArchonStartCoM;
         }
 
 
-        MapLocation nextMove = chooseSafeLocation(nearbyBullets, currentDest, 1);
-        tryMove(here.directionTo(nextMove),10,1);
-
+        MapLocation nextMove = chooseSafeLocation(currentDest, 1);
+        tryMove(nextMove, 35,3);
 
     }
 

@@ -22,30 +22,32 @@ public class ScoutLoop extends Globals{
     private static int treesCounted = 0;
     private static MapLocation currentTree;
     private static int index = 0; //Index of currentTree target in treeLocArray
-    private static BulletInfo[] nearbyBullets;
 
 
     private static void runBehaviour() throws GameActionException {
+        commonFunctions();
 
         MapLocation destination = theirArchonStartCoM;
-        nearbyBullets = rc.senseNearbyBullets(9);
 
+        TreeInfo[] addTrees = rc.senseNearbyTrees(sensorRadius, Team.NEUTRAL);
+        addTreesToMemory(addTrees);
         shakeAllTrees();
 
         if (!rc.hasMoved()) {
-            MapLocation safeSpot = chooseSafeLocation(nearbyBullets, destination, 1);
-            tryMove(here.directionTo(safeSpot), 45,1);
+            MapLocation safeSpot = chooseSafeLocation(destination, 1);
+            tryMove(safeSpot, 45,2);
         }
 
     }
 
-    private static void addTreesToMemory (TreeInfo[] scannedTrees) {
-        TreeInfo[] checkTrees = rc.senseNearbyTrees();
+    private static void addTreesToMemory (TreeInfo[] checkTrees) {
+
         for (TreeInfo tree : checkTrees) {
             int treeID = tree.getID();
-            if (!treeIDArray[treeID]){
+            if (!treeIDArray[treeID] && tree.getContainedBullets() > 0){
                 treeIDArray[treeID] = true;
                 treeLocArray[treesCounted] = tree.location;
+                ++treesCounted;
             }
         }
     }
@@ -61,12 +63,15 @@ public class ScoutLoop extends Globals{
             }
         }
 
-        if (here.distanceTo(currentTree) > (strideLength + rc.senseTreeAtLocation(currentTree).radius)) {
-            MapLocation nextMove = chooseSafeLocation(nearbyBullets, currentTree, (float)0.5);
-            tryMove(here.directionTo(nextMove), 90,1);
-        } else {
-            if (rc.canShake(currentTree)) {
-                rc.shake(currentTree);
+        if (currentTree != null) {
+            if (here.distanceTo(currentTree) > (strideLength + 1)) {
+                MapLocation nextMove = chooseSafeLocation(currentTree, 1);
+                tryMove(nextMove, 90, 1);
+            } else {
+                if (rc.canShake(currentTree)) {
+                    rc.shake(currentTree);
+                }
+                currentTree = null;
                 treeLocArray[index] = null;
             }
         }

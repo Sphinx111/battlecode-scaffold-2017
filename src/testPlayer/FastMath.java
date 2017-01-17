@@ -49,7 +49,7 @@ public class FastMath {
     }
 
     public static MapLocation multiplyVec(double f, MapLocation a) {
-        return new MapLocation((int)Math.round(f * a.x), (int)Math.round(f * a.y));
+        return new MapLocation((float)(f * a.x), (float)(f * a.y));
     }
 
     public static MapLocation negateVec(MapLocation a) {

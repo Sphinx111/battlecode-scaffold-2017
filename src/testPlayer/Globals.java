@@ -22,6 +22,7 @@ public class Globals {
     public static Team enemyTeam;
     public static int myID;
     public static RobotType myType;
+    public static boolean iAmLeader = false;
 
     public static float sensorRadius;
     public static float strideLength;
@@ -29,6 +30,7 @@ public class Globals {
     public static int roundNum;
     public static RobotInfo[] visibleEnemies;
     public static RobotInfo[] visibleAllies;
+    public static BulletInfo[] nearbyBullets;
     public static TreeInfo[] ourTrees;
     public static TreeInfo[] theirTrees;
     public static TreeInfo[] neutralTrees;
@@ -76,32 +78,50 @@ public class Globals {
         here = rc.getLocation();
     }
 
+    //Carries out common functions used by all unit types.
+    //For example, reporting their existence for unit counting
+    public static void commonFunctions() throws GameActionException {
+        Messaging.raiseHandForUnitCounts();
+        Messaging.leaderElection();
+        if (iAmLeader) {
+            leaderOnlyBehaviours();
+        }
+        visibleEnemies = rc.senseNearbyRobots(sensorRadius, enemyTeam);
+        visibleAllies = rc.senseNearbyRobots(sensorRadius, myTeam);
+        nearbyBullets = rc.senseNearbyBullets(6);
+    }
+
     public static Direction randomDirection() {
         return new Direction((float)FastMath.rand256() / 256 * 2 * (float) PI);
     }
 
-    public static boolean tryMove(Direction dir, float degreeOffset, int checksPerSide) throws GameActionException {
+    public static boolean tryMove(MapLocation target, float degreeOffset, int checksPerSide) throws GameActionException {
 
         // First, try intended direction
-        if (rc.canMove(dir)) {
-            rc.move(dir);
+        if (rc.canMove(target)) {
+            rc.move(target);
             return true;
         }
 
         // Now try a bunch of similar angles
         boolean moved = false;
         int currentCheck = 1;
-
+        Direction startDir = here.directionTo(target);
+        float targetDist = here.distanceTo(target);
         while(currentCheck<=checksPerSide) {
             // Try the offset of the left side
-            if(rc.canMove(dir.rotateLeftDegrees(degreeOffset*currentCheck))) {
-                rc.move(dir.rotateLeftDegrees(degreeOffset*currentCheck));
-                return true;
+            for (int i = 1; i < 2; i++) {
+                if (rc.canMove(here.add(startDir.rotateLeftDegrees(degreeOffset), targetDist / i))) {
+                    rc.move(here.add(startDir.rotateLeftDegrees(degreeOffset), targetDist / i));
+                    return true;
+                }
             }
             // Try the offset on the right side
-            if(rc.canMove(dir.rotateRightDegrees(degreeOffset*currentCheck))) {
-                rc.move(dir.rotateRightDegrees(degreeOffset*currentCheck));
-                return true;
+            for (int i = 1; i < 2; i++) {
+                if (rc.canMove(here.add(startDir.rotateRightDegrees(degreeOffset), targetDist))) {
+                    rc.move(here.add(startDir.rotateRightDegrees(degreeOffset), targetDist));
+                    return true;
+                }
             }
             // No move performed, try slightly further
             currentCheck++;
@@ -115,13 +135,10 @@ public class Globals {
         Vector Field sums of forces applied by all bullets approaching the player.
         "impetus" argument allows robot to act less safely if set to a large value
     */
-    public static MapLocation chooseSafeLocation(BulletInfo[] nearbyBullets, MapLocation dest, float impetus) throws GameActionException {
-        MapLocation startDirection = FastMath.minusVec(dest,here);
-        startDirection = FastMath.multiplyVec(impetus,startDirection);
-        MapLocation combinedBulletForce = here;
+    public static MapLocation chooseSafeLocation(MapLocation dest, float impetus) throws GameActionException {
+        MapLocation combinedBulletForce = new MapLocation(0,0);
         if (nearbyBullets.length > 0) {
-            Direction botEscapeAngle = new Direction(0);
-            float force = 0;
+            MapLocation botEscapeVector;
             for (BulletInfo bullet : nearbyBullets) {
                 Direction propDir = bullet.dir;
                 MapLocation bulletLoc = bullet.location;
@@ -130,15 +147,67 @@ public class Globals {
                 float bulletX = bulletLoc.x + dx;
                 float bulletY = bulletLoc.y + dy;
                 bulletLoc = new MapLocation(bulletX, bulletY);
-                botEscapeAngle = new Direction(-dx,dy);
-                float bulletDistance = here.distanceTo(bulletLoc);
-                force = 6 / bulletDistance + 0.01f;
+                botEscapeVector = FastMath.minusVec(here,bulletLoc);
+                float bulletDistance = here.distanceSquaredTo(bulletLoc);
+                botEscapeVector = FastMath.multiplyVec(3/bulletDistance, botEscapeVector);
+                combinedBulletForce = FastMath.addVec(combinedBulletForce, botEscapeVector);
             }
-            combinedBulletForce = combinedBulletForce.add(botEscapeAngle, force);
+            //rc.setIndicatorLine(here,FastMath.minusVec(here,combinedBulletForce), 0,155,0);
         }
-        MapLocation vectorResult = FastMath.addVec(startDirection, combinedBulletForce);
-        //vectorResult = FastMath.multiplyVec(0.99f,vectorResult);
-        //rc.setIndicatorLine(here,vectorResult, 0,0,255);
+        MapLocation combinedRobotForce = new MapLocation(0,0);
+        if (visibleAllies.length > 0) {
+            MapLocation botEscapeVector;
+            int botCount = 0;
+            for (RobotInfo ally : visibleAllies) {
+                if (ally.location.distanceTo(here) < 4) {
+                    botEscapeVector = FastMath.minusVec(here,ally.location);
+                    botEscapeVector = FastMath.multiplyVec(1/here.distanceSquaredTo(ally.location), botEscapeVector);
+                    combinedRobotForce = FastMath.addVec(combinedRobotForce, botEscapeVector);
+                }
+                if (botCount > 10) {
+                    break;
+                }
+            }
+            //rc.setIndicatorLine(here,FastMath.minusVec(here,combinedRobotForce), 0,0,155);
+        }
+        MapLocation combinedEnemyForce = new MapLocation(0,0);
+        if (visibleEnemies.length > 0) {
+            MapLocation botEscapeVector;
+            int botCount = 0;
+            for (RobotInfo enemy : visibleAllies) {
+                botCount++;
+                if (enemy.location.distanceTo(here) < 6) {
+                    botEscapeVector = FastMath.minusVec(here,enemy.location);
+                    botEscapeVector = FastMath.multiplyVec(2 / here.distanceSquaredTo(enemy.location), botEscapeVector);
+                    combinedEnemyForce = FastMath.addVec(combinedEnemyForce, botEscapeVector);
+                }
+                if (botCount > 10) {
+                    break;
+                }
+            }
+            //rc.setIndicatorLine(here,FastMath.minusVec(here,combinedEnemyForce), 155,0,0);
+        }
+        //We now have 3 vectors summing up the total forces applied by bullets, enemies and allies from "here".
+        //Find vector to destination:
+        MapLocation vectorToDest = FastMath.minusVec(dest,here);
+        //If destination is not "here", Normalise it, then multiply by the impetus value
+        if (dest != null && dest != here) {
+            vectorToDest = FastMath.multiplyVec(impetus / here.distanceTo(dest), vectorToDest);
+        }
+        //Then add up all of our resultant vectors
+        MapLocation vectorResult = FastMath.addVec(combinedEnemyForce, combinedBulletForce);
+        vectorResult = FastMath.addVec(vectorResult, combinedRobotForce);
+        vectorResult = FastMath.addVec(vectorResult, vectorToDest);
+
+        //"normalise" the final resulting vector up to the unit's stridelength value.
+        float vectorDistancesSummed = 3 + impetus;
+        MapLocation origin = new MapLocation(0,0);
+        vectorResult = FastMath.multiplyVec((strideLength/vectorResult.distanceTo(origin)), vectorResult);
+        vectorResult = FastMath.negateVec(vectorResult);
+        //convert Vector to absolute mapLocation
+        vectorResult = FastMath.minusVec(here,vectorResult);
+        //draw a line and return the resultant movement choice.
+        //rc.setIndicatorLine(here,vectorResult, 255,255,255);
         return vectorResult;
     }
 
@@ -154,5 +223,10 @@ public class Globals {
             }
         }
     }
+
+    public static void leaderOnlyBehaviours() {
+
+    }
+
 }
 

@@ -21,10 +21,10 @@ public class LumberjackLoop extends Globals{
     }
 
     private static void runBehaviour() throws GameActionException {
+        commonFunctions();
         // See if there are any enemy robots within striking range (distance 1 from lumberjack's radius)
         RobotInfo[] robots = rc.senseNearbyRobots(GameConstants.LUMBERJACK_STRIKE_RADIUS, enemyTeam);
         TreeInfo[] trees = rc.senseNearbyTrees();
-        BulletInfo[] nearbyBullets = rc.senseNearbyBullets(6);
         MapLocation dest;
         TreeInfo[] nearbyTrees = rc.senseNearbyTrees(strideLength, Team.NEUTRAL);
 
@@ -38,8 +38,8 @@ public class LumberjackLoop extends Globals{
                     rc.setIndicatorLine(here, dest, 255, 0, 0);
 
                     if (here.distanceTo(dest) > (strideLength + target.radius + myType.bodyRadius)) {
-                        dest = chooseSafeLocation(nearbyBullets, dest, 1);
-                        if (tryMove(here.directionTo(dest), 45, 3)) {
+                        dest = chooseSafeLocation(dest, 1);
+                        if (tryMove(dest, 45, 3)) {
                             break;
                         }
 
