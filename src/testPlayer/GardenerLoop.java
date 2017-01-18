@@ -38,10 +38,11 @@ public class GardenerLoop extends Globals {
 
         if (!reachedBuildPoint) {
             chooseAndMoveToBuildSpot();
+            tryMove(chooseSafeLocation(dest, 1),45,3);
         }
 
         if (reachedBuildPoint) {
-            rc.setIndicatorDot(here,150,150,150);
+            rc.setIndicatorDot(here,25,150,25);
             tryBuild();
             tryWater();
         }
@@ -124,7 +125,7 @@ public class GardenerLoop extends Globals {
                 Direction checkDir = awayFromEnemy.rotateLeftDegrees(j * 30);
                 for (float i = 20; i >= 0; i--) {
                     MapLocation nextCheck = here.add(checkDir, i);
-                    if (rc.canSenseAllOfCircle(nextCheck, 2)) {
+                    if (rc.canSenseAllOfCircle(nextCheck, 2.1f)) {
                             if (rc.onTheMap(nextCheck, 2) && !rc.isCircleOccupiedExceptByThisRobot(nextCheck, 2)) {
                                 buildTarget = nextCheck;
                                 buildLocFound = true;
@@ -156,7 +157,8 @@ public class GardenerLoop extends Globals {
             }
             if (buildTarget == null) {
                 if (dest != null) {
-                    if(!tryMove(dest, 30,4)){
+                    MapLocation nextMove = chooseSafeLocation(dest, 1);
+                    if(!tryMove(nextMove, 30,4)){
                         turnsFailedMove += 0.1;
                     }
                 }

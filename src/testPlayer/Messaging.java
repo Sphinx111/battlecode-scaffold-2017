@@ -3,18 +3,17 @@ import battlecode.common.*;
 
 public class Messaging extends Globals{
     //1000 channels available for messaging.
-    public static int LeaderElectedChannel = 0;
     public static int indexDefendArchon = 1;
     public static int indexAttackHere = 2;
     public static int indexRallyHere = 3;
     public static int indexBuildCount = 4;
-    private static int indexLastLeaderSignal;
+    private static int indexLastLeaderSignal = 0;
 
     public static int indexLastUpdateToUnitCounts = 24;
     public static int indexUnitCounts = 25;
     public static int indexTreeCount = 26;
 
-
+    public static int indexEnemyLocation = 27;
     public static int indexEnemyUnitCounts = 28;
     public static int indexEnemyTreeCount = 29;
     public static int indexEnemyTotalUnitCount = 30;
@@ -65,6 +64,25 @@ public class Messaging extends Globals{
                 rc.broadcast(indexLumberjackCount, rc.readBroadcast(indexLumberjackCount) + 1);
             }
         }
+    }
+
+    public static int getMyUnitCount()throws GameActionException {
+        int unitCount = 1;
+        if (myType == RobotType.ARCHON) {
+            unitCount = rc.readBroadcast(Messaging.indexArchonCount);
+        } else if (myType == RobotType.GARDENER) {
+            unitCount = rc.readBroadcast(Messaging.indexGardenerCount);
+        } else if (myType == RobotType.SOLDIER) {
+            unitCount = rc.readBroadcast(Messaging.indexSoldierCount);
+        } else if (myType == RobotType.TANK) {
+            unitCount = rc.readBroadcast(Messaging.indexTankCount);
+        } else if (myType == RobotType.SCOUT) {
+            unitCount = rc.readBroadcast(Messaging.indexScoutCount);
+        } else if (myType == RobotType.LUMBERJACK) {
+            unitCount = rc.readBroadcast(Messaging.indexLumberjackCount);
+        }
+
+        return unitCount;
     }
 
     //encode unit counts
@@ -164,6 +182,21 @@ public class Messaging extends Globals{
         rc.broadcast(indexMapEdges, value);
 //		Debug.indicate("edges", 1, "send: value=" + Integer.toHexString(value) + " MinX=" + MapEdges.minX + " MaxX=" + MapEdges.maxX + " MinY=" + MapEdges.minY + " MaxY=" + MapEdges.maxY);
 //		Debug.indicate("msg", msgDILN(), "sendKnownMapEdges " + radiusSq);
+    }
+
+    public static int encodeMapLocation(MapLocation loc) {
+        int xVal = (int)(Math.floor(loc.x));
+        int yVal = (int)(Math.floor(loc.y));
+        //max x/y values are (500+500) = 1,000
+        return yVal << 10 | xVal;
+    }
+
+    public static MapLocation mapLocFromInt(int data) {
+        int xVal = 0x03FF & data;
+        data >>>= 10;
+        int yVal = 0x03FF & data;
+        MapLocation newLoc = new MapLocation(xVal,yVal);
+        return newLoc;
     }
 
     private static int parseInt(int[] data) {

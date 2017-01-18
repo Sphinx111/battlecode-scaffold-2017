@@ -23,6 +23,9 @@ public class Globals {
     public static int myID;
     public static RobotType myType;
     public static boolean iAmLeader = false;
+    public static int myUnitCount = 1;
+
+    public static MapLocation enemyTarget;
 
     public static float sensorRadius;
     public static float strideLength;
@@ -34,6 +37,7 @@ public class Globals {
     public static TreeInfo[] ourTrees;
     public static TreeInfo[] theirTrees;
     public static TreeInfo[] neutralTrees;
+    public static TreeInfo[] adjacentTrees;
 
     public static int soldierValue = 2;
     public static int tankValue = 4;
@@ -89,6 +93,7 @@ public class Globals {
         visibleEnemies = rc.senseNearbyRobots(sensorRadius, enemyTeam);
         visibleAllies = rc.senseNearbyRobots(sensorRadius, myTeam);
         nearbyBullets = rc.senseNearbyBullets(6);
+        adjacentTrees = rc.senseNearbyTrees(4);
     }
 
     public static Direction randomDirection() {
@@ -174,11 +179,11 @@ public class Globals {
         if (visibleEnemies.length > 0) {
             MapLocation botEscapeVector;
             int botCount = 0;
-            for (RobotInfo enemy : visibleAllies) {
+            for (RobotInfo enemy : visibleEnemies) {
                 botCount++;
-                if (enemy.location.distanceTo(here) < 6) {
+                if (enemy.location.distanceTo(here) < 6 && enemy.type != RobotType.GARDENER && enemy.type!= RobotType.ARCHON) {
                     botEscapeVector = FastMath.minusVec(here,enemy.location);
-                    botEscapeVector = FastMath.multiplyVec(2 / here.distanceSquaredTo(enemy.location), botEscapeVector);
+                    botEscapeVector = FastMath.multiplyVec(5 / here.distanceSquaredTo(enemy.location), botEscapeVector);
                     combinedEnemyForce = FastMath.addVec(combinedEnemyForce, botEscapeVector);
                 }
                 if (botCount > 10) {
@@ -186,6 +191,20 @@ public class Globals {
                 }
             }
             //rc.setIndicatorLine(here,FastMath.minusVec(here,combinedEnemyForce), 155,0,0);
+        }
+        MapLocation combinedTreeForce = new MapLocation(0,0);
+        if (adjacentTrees.length > 0 && (myType != RobotType.SCOUT && myType != RobotType.LUMBERJACK)) {
+            MapLocation botEscapeVector;
+            int treeCount = 0;
+            for (TreeInfo tree : adjacentTrees) {
+                botEscapeVector = FastMath.minusVec(here, tree.location);
+                botEscapeVector = FastMath.multiplyVec(1 / here.distanceSquaredTo(tree.location), botEscapeVector);
+                combinedTreeForce = FastMath.addVec(combinedTreeForce, botEscapeVector);
+                if (treeCount > 4) {
+                    break;
+                }
+            }
+            //rc.setIndicatorLine(here,FastMath.minusVec(here,combinedRobotForce), 0,0,155);
         }
         //We now have 3 vectors summing up the total forces applied by bullets, enemies and allies from "here".
         //Find vector to destination:
@@ -197,6 +216,7 @@ public class Globals {
         //Then add up all of our resultant vectors
         MapLocation vectorResult = FastMath.addVec(combinedEnemyForce, combinedBulletForce);
         vectorResult = FastMath.addVec(vectorResult, combinedRobotForce);
+        vectorResult = FastMath.addVec(vectorResult, combinedTreeForce);
         vectorResult = FastMath.addVec(vectorResult, vectorToDest);
 
         //"normalise" the final resulting vector up to the unit's stridelength value.
@@ -223,6 +243,12 @@ public class Globals {
             }
         }
     }
+
+    public static void processSignals() throws GameActionException {
+        myUnitCount = Messaging.getMyUnitCount();
+        enemyTarget = Messaging.mapLocFromInt(rc.readBroadcast(Messaging.indexEnemyLocation));
+    }
+
 
     public static void leaderOnlyBehaviours() {
 

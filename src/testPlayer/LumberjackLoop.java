@@ -30,7 +30,29 @@ public class LumberjackLoop extends Globals{
 
         tryShakingTrees(nearbyTrees);
 
-        if (trees.length > 0) {
+        if (!rc.hasAttacked() && visibleEnemies.length > 0) {
+            if (robots.length > 0) {
+                // Use strike() to hit all nearby robots!
+                rc.strike();
+            } else {
+                // If there is a robot, move towards it
+                if (visibleEnemies.length > 0) {
+                    MapLocation enemyLocation = visibleEnemies[0].getLocation();
+                    MapLocation nextMove = chooseSafeLocation(enemyLocation, 1);
+                    tryMove(nextMove, 25,7);
+                    if (!rc.hasAttacked() && visibleEnemies[0].location.distanceTo(rc.getLocation()) < GameConstants.LUMBERJACK_STRIKE_RADIUS) {
+                        rc.strike();
+                    }
+                } else {
+                    // Move Randomly
+                    Direction k = randomDirection();
+                    if (rc.canMove(k) && !rc.hasMoved()) {
+                        rc.move(k);
+                    }
+                }
+            }
+        }
+        if (trees.length > 0 && !rc.hasAttacked()) {
             for (int i = 0; i < trees.length; i++) {
                 if (trees[i].getTeam() != myTeam) {
                     TreeInfo target = trees[i];
@@ -38,40 +60,14 @@ public class LumberjackLoop extends Globals{
                     rc.setIndicatorLine(here, dest, 255, 0, 0);
 
                     if (here.distanceTo(dest) > (strideLength + target.radius + myType.bodyRadius)) {
-                        dest = chooseSafeLocation(dest, 1);
-                        if (tryMove(dest, 45, 3)) {
-                            break;
-                        }
-
-                    } else {
+                        MapLocation nextMove = chooseSafeLocation(dest, 1);
+                        tryMove(nextMove, 35, 4);
+                    }
+                    if (here.distanceTo(dest) <= (strideLength + target.radius)){
                         if (rc.canChop(target.getID())) {
                             rc.chop(target.getID());
                             break;
                         }
-                    }
-                }
-            }
-        }
-        if (!rc.hasAttacked()) {
-            if (robots.length > 0) {
-                // Use strike() to hit all nearby robots!
-                rc.strike();
-            } else {
-                // No trees or close robots, so search for robots within sight radius
-                robots = rc.senseNearbyRobots(-1, enemyTeam);
-
-                // If there is a robot, move towards it
-                if (robots.length > 0) {
-                    MapLocation enemyLocation = robots[0].getLocation();
-                    Direction toEnemy = here.directionTo(enemyLocation);
-                    if (rc.canMove(toEnemy) && !rc.hasMoved()) {
-                        rc.move(toEnemy);
-                    }
-                } else {
-                    // Move Randomly
-                    Direction k = randomDirection();
-                    if (rc.canMove(k) && !rc.hasMoved()) {
-                        rc.move(k);
                     }
                 }
             }

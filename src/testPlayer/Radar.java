@@ -1,5 +1,8 @@
 package testPlayer;
 import battlecode.common.*;
+
+import static battlecode.common.Direction.*;
+
 /**
  * Created by Celeron on 1/10/2017.
  */
@@ -71,10 +74,26 @@ public class Radar extends Globals{
 
     }
 
+    public static MapLocation chooseExploreDirection() {
+        MapLocation moveThisWay = here;
+        if (minX == UNKNOWN) {
+            moveThisWay = here.add(getWest(),strideLength);
+        } else if (minY == UNKNOWN) {
+            moveThisWay = here.add(getSouth(), strideLength);
+        } else if (maxX == UNKNOWN) {
+            moveThisWay = here.add(getEast(), strideLength);
+        } else if (maxY == UNKNOWN) {
+            moveThisWay = here.add(getNorth(), strideLength);
+        } else {
+            ScoutLoop.roleAssigned = null;
+        }
+        return moveThisWay;
+    }
+
     public static void detectAndBroadcastMapEdges(int visionRange) throws GameActionException {
         boolean shouldSend = false;
         if (minX == UNKNOWN) {
-            Direction west = Direction.getWest();
+            Direction west = getWest();
             if (!rc.onTheMap(here.add(west, visionRange))) {
                 for (int r = 1; r <= visionRange; ++r) {
                     if (!rc.onTheMap(here.add(west, r))) {
@@ -87,7 +106,7 @@ public class Radar extends Globals{
         }
 
         if (maxX == UNKNOWN) {
-            Direction east = Direction.getEast();
+            Direction east = getEast();
             if (!rc.onTheMap(here.add(east, visionRange))) {
                 for (int r = 1; r <= visionRange; ++r) {
                     if (!rc.onTheMap(here.add(east, r))) {
@@ -113,7 +132,7 @@ public class Radar extends Globals{
         }
 
         if (maxY == UNKNOWN) {
-            Direction north = Direction.getNorth();
+            Direction north = getNorth();
             if (!rc.onTheMap(here.add(north, visionRange))) {
                 for (int r = 1; r <= visionRange; ++r) {
                     if (!rc.onTheMap(here.add(north, r))) {

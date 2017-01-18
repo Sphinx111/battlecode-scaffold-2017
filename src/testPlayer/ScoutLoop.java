@@ -12,32 +12,114 @@ public class ScoutLoop extends Globals{
                 runBehaviour();
                 Clock.yield();
             } catch (Exception e) {
+                try {rc.setIndicatorDot(here,50,50,50);}
+                catch (Exception E) {
+                    E.printStackTrace();
+                }
                 Clock.yield();
             }
         }
     }
 
+    public static String roleAssigned;
     private static boolean[] treeIDArray = new boolean[32000];
     private static MapLocation[] treeLocArray = new MapLocation[150];
     private static int treesCounted = 0;
     private static MapLocation currentTree;
     private static int index = 0; //Index of currentTree target in treeLocArray
+    private static boolean mapEdgesKnown = false;
 
 
     private static void runBehaviour() throws GameActionException {
         commonFunctions();
-
         MapLocation destination = theirArchonStartCoM;
-
-        TreeInfo[] addTrees = rc.senseNearbyTrees(sensorRadius, Team.NEUTRAL);
-        addTreesToMemory(addTrees);
-        shakeAllTrees();
-
-        if (!rc.hasMoved()) {
-            MapLocation safeSpot = chooseSafeLocation(destination, 1);
-            tryMove(safeSpot, 45,2);
+        if (roleAssigned == null) {
+            chooseScoutRole();
         }
 
+        if (roleAssigned == "mapEdgeFinder") {
+            Messaging.processMapEdges(Messaging.indexMapEdges);
+            destination = chooseSafeLocation(Radar.chooseExploreDirection(), 1);
+            tryMove(destination, 30,4);
+            Radar.detectAndBroadcastMapEdges((int)sensorRadius);
+        } else if (roleAssigned == "patrolAndReport") {
+            TreeInfo[] addTrees = rc.senseNearbyTrees(sensorRadius, Team.NEUTRAL);
+            addTreesToMemory(addTrees);
+            shakeAllTrees();
+        } else if (roleAssigned == "gardenerHunter") {
+            MapLocation target = findGardeners();
+            if (target != here) {
+                MapLocation safeSpot = findTreeAdjToGardener(target);
+                if (here.distanceSquaredTo(safeSpot) > strideLength) {
+                    safeSpot = chooseSafeLocation(safeSpot, 20);
+                }
+                if (rc.canMove(safeSpot)) {
+                    rc.move(safeSpot);
+                }
+                here = rc.getLocation();
+                if (rc.canFireSingleShot() && here.distanceTo(target) <= (RobotType.GARDENER.bodyRadius + RobotType.SCOUT.bodyRadius + 0.01f)) {
+                    rc.fireSingleShot(here.directionTo(target));
+                }
+            } else {
+                TreeInfo[] addTrees = rc.senseNearbyTrees(sensorRadius, Team.NEUTRAL);
+                addTreesToMemory(addTrees);
+                shakeAllTrees();
+            }
+        }
+        if (!rc.hasMoved()) {
+            MapLocation nextMove = chooseSafeLocation(destination, 0.5f);
+            tryMove(nextMove, 30, 4);
+            if (here.distanceTo(theirArchonStartCoM) < 3) {
+                roleAssigned = "gardenerHunter";
+            }
+        }
+        if (!rc.hasAttacked() && visibleEnemies.length > 0) {
+            here = rc.getLocation();
+            for (RobotInfo enemy : visibleEnemies) {
+                if (enemy.type != RobotType.ARCHON || roundNum > (rc.getRoundLimit() - 500)) {
+                    if (enemy.location.distanceTo(here) < 5 && rc.canFireSingleShot()) {
+                        rc.fireSingleShot(here.directionTo(enemy.location));
+                        break;
+                    }
+                }
+            }
+        }
+        if (visibleEnemies.length > 0) {
+            RobotInfo archonSeen;
+            for (RobotInfo enemy : visibleEnemies) {
+                if (enemy.type == RobotType.ARCHON) {
+                    int encodedLoc = Messaging.encodeMapLocation(enemy.location);
+                    rc.broadcast(Messaging.indexEnemyLocation, encodedLoc);
+                    break;
+                } else if (enemy.type == RobotType.GARDENER) {
+                    int encodedLoc = Messaging.encodeMapLocation(enemy.location);
+                    rc.broadcast(Messaging.indexEnemyLocation, encodedLoc);
+                }
+            }
+        }
+
+    }
+
+    private static MapLocation findGardeners() {
+        for (RobotInfo robot : visibleEnemies){
+            if (robot.type == RobotType.GARDENER) {
+                return robot.location;
+            }
+        }
+        return here;
+    }
+
+    private static MapLocation findTreeAdjToGardener(MapLocation gardenerLoc) {
+        TreeInfo[] nearbyTrees = rc.senseNearbyTrees(sensorRadius, enemyTeam);
+        float nearestDist = 9999;
+        MapLocation nearestTree = gardenerLoc;
+        for (TreeInfo tree : nearbyTrees) {
+            if (gardenerLoc.distanceTo(tree.location) < nearestDist) {
+                nearestDist = gardenerLoc.distanceTo(tree.location);
+                nearestTree = tree.location;
+            }
+        }
+        return nearestTree;
     }
 
     private static void addTreesToMemory (TreeInfo[] checkTrees) {
@@ -75,6 +157,23 @@ public class ScoutLoop extends Globals{
                 treeLocArray[index] = null;
             }
         }
+    }
+
+    private static void chooseScoutRole() throws GameActionException {
+        if (Radar.minX == Radar.UNKNOWN || Radar.minY == Radar.UNKNOWN || Radar.maxX == Radar.UNKNOWN || Radar.maxY == Radar.UNKNOWN){
+            roleAssigned = "mapEdgeFinder";
+            return;
+        } else {
+            mapEdgesKnown = true;
+        }
+        if (roundNum < 250 || myUnitCount % 3 == 0) {
+            roleAssigned = "gardenerHunter";
+            return;
+        } else if (myUnitCount % 3 == 1 || myUnitCount %3 ==2){
+            roleAssigned = "patrolAndReport";
+            return;
+        }
+
     }
 
 }
