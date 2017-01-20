@@ -39,11 +39,13 @@ public class RobotPlayer extends Globals {
                 int endTurn = rc.getRoundNum();
                 if (startTurn != endTurn) {
                     System.out.println(myID + " OVER BYTECODE LIMIT!");
-                    rc.setIndicatorDot(here, 0, 0, 0);
+                    rc.setIndicatorDot(here, 35, 35, 35);
                 }
                 Clock.yield();
             } catch (Exception e) {
                 e.printStackTrace();
+                rc.setIndicatorDot(here,0,0,0);
+                Clock.yield();
             }
         }
     }

@@ -87,6 +87,7 @@ public class Globals {
         Messaging.raiseHandForUnitCounts();
         Messaging.leaderElection();
         if (iAmLeader) {
+            System.out.println("I am the leader!");
             leaderOnlyBehaviours();
         }
         visibleEnemies = rc.senseNearbyRobots(sensorRadius, enemyTeam);
@@ -101,6 +102,9 @@ public class Globals {
 
     public static boolean tryMove(MapLocation target, float degreeOffset, int checksPerSide) throws GameActionException {
 
+        if (rc.hasMoved()) {
+            return false;
+        }
         // First, try intended direction
         if (rc.canMove(target)) {
             rc.move(target);
@@ -271,8 +275,12 @@ public class Globals {
         }
         myUnitCount = Messaging.getMyUnitCount();
         int enemyLocationData = rc.readBroadcast(Messaging.indexEnemyLocation);
-        enemyTarget = Messaging.mapLocFromInt(enemyLocationData);
-        enemyTargetAge = Messaging.mapLocAgeFromInt(enemyLocationData);
+        if (enemyLocationData != 0) {
+            enemyTarget = Messaging.mapLocFromInt(enemyLocationData);
+            enemyTargetAge = Messaging.mapLocAgeFromInt(enemyLocationData);
+        } else {
+            enemyTarget = theirArchonStartCoM;
+        }
     }
 
 

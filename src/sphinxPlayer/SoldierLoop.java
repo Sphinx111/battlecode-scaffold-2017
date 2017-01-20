@@ -56,7 +56,7 @@ public class SoldierLoop extends Globals {
                 toArchons = theirArchonStartLocs[(int)(Math.random()*archonStartCount)];
             }
             MapLocation farDest = chooseSafeLocation(toArchons,0.5f);
-            if (tryMove(farDest, 35,4)) {
+            if (!tryMove(farDest, 35,4)) {
                 Direction random = randomDirection();
                 MapLocation nextMove = here.add(random, 1);
                 tryMove(nextMove, 45, 2);

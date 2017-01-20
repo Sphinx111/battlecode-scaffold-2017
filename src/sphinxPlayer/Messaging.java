@@ -42,12 +42,12 @@ public class Messaging extends Globals {
     public static void raiseHandForUnitCounts() throws GameActionException {
         if (rc.readBroadcast(indexLastUpdateToUnitCounts) < roundNum) {
             rc.broadcast(indexLastUpdateToUnitCounts, roundNum);
-            rc.broadcast(indexArchonCount, 1);
-            rc.broadcast(indexGardenerCount, 1);
-            rc.broadcast(indexSoldierCount, 1);
-            rc.broadcast(indexTankCount, 1);
-            rc.broadcast(indexScoutCount, 1);
-            rc.broadcast(indexLumberjackCount, 1);
+            rc.broadcast(indexArchonCount, 0);
+            rc.broadcast(indexGardenerCount, 0);
+            rc.broadcast(indexSoldierCount, 0);
+            rc.broadcast(indexTankCount, 0);
+            rc.broadcast(indexScoutCount, 0);
+            rc.broadcast(indexLumberjackCount, 0);
         } else {
             if (myType == RobotType.ARCHON) {
                 rc.broadcast(indexArchonCount, rc.readBroadcast(indexArchonCount) + 1);
@@ -151,6 +151,7 @@ public class Messaging extends Globals {
             return 127;
         } else {
             // max map size is 100 < 110
+            original = original / 10;
             return (original + 33000) % 110;
         }
     }
@@ -161,7 +162,7 @@ public class Messaging extends Globals {
         while (original >= reference) {
             original -= 110;
         }
-        return original + 110;
+        return (original + 110) * 10;
     }
 
     private static int parseMapEdgesMin(int compressed, int reference) {
@@ -170,7 +171,7 @@ public class Messaging extends Globals {
         while (original > reference) {
             original -= 110;
         }
-        return original;
+        return original * 10;
     }
 
     public static void sendKnownMapEdges() throws GameActionException {
@@ -189,7 +190,7 @@ public class Messaging extends Globals {
         int yVal = (int)(Math.floor(loc.y));
         //max x/y values are (500+500) = 1,000
         //max roundNum is 3000
-        return roundNum << 21 |yVal << 10 | xVal;
+        return roundNum << 20 |yVal << 10 | xVal;
     }
 
     public static MapLocation mapLocFromInt(int data) {
@@ -201,8 +202,8 @@ public class Messaging extends Globals {
     }
 
     public static int mapLocAgeFromInt(int data) {
-        data >>>= 21;
-        int intelAge = data & 0x0FFF;
+        data >>>= 20;
+        int intelAge = data & 0xFFF;
         return intelAge;
     }
 

@@ -1,9 +1,6 @@
 package sphinxPlayer;
 
 import battlecode.common.*;
-import sphinxPlayer.Globals;
-import sphinxPlayer.Messaging;
-import sphinxPlayer.Radar;
 
 /**
  * Created by Celeron on 1/10/2017.
@@ -11,10 +8,11 @@ import sphinxPlayer.Radar;
 public class ScoutLoop extends Globals {
 
     public static void loop() throws GameActionException {
+        rc.setIndicatorDot(here, 255,255,255);
         runBehaviour();
     }
 
-    public static String roleAssigned = "";
+    public static int roleAssigned = 0;
     private static boolean[] treeIDArray = new boolean[32000];
     private static MapLocation[] treeLocArray = new MapLocation[150];
     private static int treesCounted = 0;
@@ -24,17 +22,18 @@ public class ScoutLoop extends Globals {
     private static MapLocation destination = theirArchonStartCoM;
 
     private static void runBehaviour() throws GameActionException {
-        if (roleAssigned == "") {
-            chooseScoutRole();
+
+        if (roleAssigned == 0) {
+            roleAssigned = chooseScoutRole(); //1 = find Map Edges, 2 = kill gardeners, 3 = explore map
         }
 
-        if (roleAssigned == "mapEdgeFinder") {
+        if (roleAssigned == 1) {
             mapEdgeFinderBehaviour();
-        } else if (roleAssigned == "patrolAndReport") {
+        } else if (roleAssigned == 2) {
             TreeInfo[] addTrees = rc.senseNearbyTrees(sensorRadius, Team.NEUTRAL);
             addTreesToMemory(addTrees);
             shakeAllTrees();
-        } else if (roleAssigned == "gardenerHunter") {
+        } else if (roleAssigned == 3) {
             MapLocation target = findGardeners();
             if (target != here) {
                 MapLocation safeSpot = findTreeAdjToGardener(target);
@@ -48,17 +47,6 @@ public class ScoutLoop extends Globals {
                 if (rc.canFireSingleShot() && here.distanceTo(target) <= (RobotType.GARDENER.bodyRadius + RobotType.SCOUT.bodyRadius + 0.01f)) {
                     rc.fireSingleShot(here.directionTo(target));
                 }
-            } else {
-                TreeInfo[] addTrees = rc.senseNearbyTrees(sensorRadius, Team.NEUTRAL);
-                addTreesToMemory(addTrees);
-                shakeAllTrees();
-            }
-        }
-        if (!rc.hasMoved()) {
-            MapLocation nextMove = chooseSafeLocation(destination, 0.5f);
-            tryMove(nextMove, 30, 4);
-            if (here.distanceTo(theirArchonStartCoM) < 3) {
-                roleAssigned = "gardenerHunter";
             }
         }
         if (!rc.hasAttacked() && visibleEnemies.length > 0) {
@@ -104,8 +92,9 @@ public class ScoutLoop extends Globals {
     }
 
     private static void mapEdgeFinderBehaviour() throws GameActionException {
-        Messaging.processMapEdges(Messaging.indexMapEdges);
-        destination = chooseSafeLocation(Radar.chooseExploreDirection(), 4);
+        Messaging.processMapEdges(rc.readBroadcast(Messaging.indexMapEdges));
+        destination = chooseSafeLocation(Radar.chooseExploreDirection(), 1);
+        rc.setIndicatorLine(here,destination,55,55,255);
         tryMove(destination, 30,4);
         Radar.detectAndBroadcastMapEdges((int)sensorRadius);
     }
@@ -169,23 +158,21 @@ public class ScoutLoop extends Globals {
         }
     }
 
-    private static void chooseScoutRole() throws GameActionException {
+    private static int chooseScoutRole() throws GameActionException {
         if (Radar.minX == Radar.UNKNOWN || Radar.minY == Radar.UNKNOWN || Radar.maxX == Radar.UNKNOWN || Radar.maxY == Radar.UNKNOWN){
-            roleAssigned = "mapEdgeFinder";
-            return;
+            rc.setIndicatorDot(here, 0,50,0);
+            return 1;
         } else {
             mapEdgesKnown = true;
+            if (roundNum < 250 || myUnitCount % 3 == 0 || myUnitCount % 3 == 2) {
+                rc.setIndicatorDot(here, 0,150,0);
+                return 2;
+            } else {
+                rc.setIndicatorDot(here, 0,250,0);
+                return 3;
+            }
         }
-        if (roundNum < 250 || myUnitCount % 3 == 0  || myUnitCount %3 ==2) {
-            roleAssigned = "gardenerHunter";
-            return;
-        } else if (myUnitCount % 3 == 1){
-            roleAssigned = "patrolAndReport";
-            return;
-        }
-
     }
-
 }
 
 
