@@ -1,0 +1,11 @@
+Indicator Dots:
+Dark Grey or Black - Error/Exception.
+Red - Noting enemy info communicated outwards.
+Yellow - Navigation plotting
+
+Indicator Lines:
+Red - attack order
+Blue - assist friendly/move to
+Light Grey - Drawing mapInfo
+Green - build/heal
+Yellow + Orange - Navigation Plotting

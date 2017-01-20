@@ -1,49 +1,22 @@
-package testPlayer;
-import battlecode.common.*;
+package sphinxPlayer;
 
-import static java.lang.Math.PI;
+import battlecode.common.*;
 
 /**
  * Created by Celeron on 1/10/2017.
  */
 public class ArchonLoop extends Globals {
 
-    private static MapLocation startLocation;
     private static MapLocation currentDest;
-    private static Direction currentHeading;
-    private static boolean isLeader;
 
-    private static TreeInfo[] knownTreesHoldingArchons;
-    private static int buildCount = 0;
+    public static void loop () throws GameActionException{
 
+        runBehaviour();
 
-    public static void loop () {
-        //Initialise optimised random function
-        FastMath.initRand(rc);
-
-        while (true) {
-            int startTurn = rc.getRoundNum();
-            try {
-                Globals.update();
-                runBehaviour();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-            int endTurn = rc.getRoundNum();
-            if (startTurn != endTurn) {
-                System.out.println(myID + " OVER BYTECODE LIMIT!");
-            }
-
-            Clock.yield();
-        }
     }
 
     private static void runBehaviour() throws GameActionException {
-        //TODO: processSignals();
-        commonFunctions();
-        buildCount = rc.readBroadcast(Messaging.indexBuildCount);
-
-        //TODO: Check map edges here if game is underway (20-50 turns)
+        processSignals();
 
         neutralTrees = rc.senseNearbyTrees(sensorRadius, Team.NEUTRAL);
 
@@ -58,15 +31,9 @@ public class ArchonLoop extends Globals {
 
         tryShakingTrees(neutralTrees);
 
-        //TODO: send radarInfo to messaging arrays
         tryBuild();
 
-        startLocation = here;
         chooseDest();
-
-        if (rc.getTeamBullets() > 10000) {
-            rc.donate(10000);
-        }
 
     }
 
@@ -91,16 +58,18 @@ public class ArchonLoop extends Globals {
     }
 
     private static void chooseDest() throws GameActionException {
-        if (currentDest != null ) {
-
-        } else {
-            currentDest = ourArchonStartCoM;
+        if (currentDest == null ) {
+            int rallyInt = rc.readBroadcast(Messaging.indexRallyHere);
+            if (rallyInt != 0) {
+                if (roundNum - Messaging.mapLocAgeFromInt(rallyInt) < 50) {
+                    currentDest = Messaging.mapLocFromInt(rallyInt);
+                }
+            } else {
+                currentDest = ourArchonStartCoM;
+            }
         }
-
-
         MapLocation nextMove = chooseSafeLocation(currentDest, 1);
         tryMove(nextMove, 35,3);
-
     }
 
 }

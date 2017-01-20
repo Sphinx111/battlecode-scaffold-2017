@@ -1,4 +1,5 @@
-package testPlayer;
+package sphinxPlayer;
+
 import battlecode.common.*;
 
 import static java.lang.Math.PI;
@@ -14,8 +15,6 @@ public class Globals {
     public static MapLocation theirArchonStartCoM;
     public static MapLocation mapStartCoM;
 
-    public static Direction[] dirs = {Direction.getNorth(),Direction.getEast(),Direction.getSouth(),Direction.getWest()};
-
     public static RobotController rc;
     public static MapLocation here;
     public static Team myTeam;
@@ -26,26 +25,26 @@ public class Globals {
     public static int myUnitCount = 1;
 
     public static MapLocation enemyTarget;
+    public static int enemyTargetAge;
 
     public static float sensorRadius;
     public static float strideLength;
 
     public static int roundNum;
+    public static int buildCount;
     public static RobotInfo[] visibleEnemies;
     public static RobotInfo[] visibleAllies;
     public static BulletInfo[] nearbyBullets;
-    public static TreeInfo[] ourTrees;
-    public static TreeInfo[] theirTrees;
-    public static TreeInfo[] neutralTrees;
     public static TreeInfo[] adjacentTrees;
+    public static TreeInfo[] neutralTrees;
 
-    public static int soldierValue = 2;
-    public static int tankValue = 4;
-    public static int scoutValue = 1;
-    public static int archonValue = 0;
-    public static int gardenerValue = 0;
-    public static int lumberjackValue = 1;
-    public static int treeValue = 1;
+    public static int SOLDIER_VALUE = 2;
+    public static int TANK_VALUE = 4;
+    public static int SCOUT_VALUE = 1;
+    public static int ARCHON_VALUE = 0;
+    public static int GARDENER_VALUE = 0;
+    public static int LUMBERJACK_VALUE = 1;
+    public static int TREE_VALUE = 0;
 
     public static void init(RobotController myRC) {
         rc = myRC;
@@ -115,16 +114,16 @@ public class Globals {
         float targetDist = here.distanceTo(target);
         while(currentCheck<=checksPerSide) {
             // Try the offset of the left side
-            for (int i = 1; i < 2; i++) {
+            for (int i = 1; i < 4; i++) {
                 if (rc.canMove(here.add(startDir.rotateLeftDegrees(degreeOffset), targetDist / i))) {
                     rc.move(here.add(startDir.rotateLeftDegrees(degreeOffset), targetDist / i));
                     return true;
                 }
             }
             // Try the offset on the right side
-            for (int i = 1; i < 2; i++) {
-                if (rc.canMove(here.add(startDir.rotateRightDegrees(degreeOffset), targetDist))) {
-                    rc.move(here.add(startDir.rotateRightDegrees(degreeOffset), targetDist));
+            for (int i = 1; i < 4; i++) {
+                if (rc.canMove(here.add(startDir.rotateRightDegrees(degreeOffset), targetDist / i))) {
+                    rc.move(here.add(startDir.rotateRightDegrees(degreeOffset), targetDist / i));
                     return true;
                 }
             }
@@ -183,9 +182,13 @@ public class Globals {
             int botCount = 0;
             for (RobotInfo enemy : visibleEnemies) {
                 botCount++;
+                float botFearRating = 4;
+                if (enemy.type == RobotType.LUMBERJACK) {
+                    botFearRating = 6;
+                }
                 if (enemy.location.distanceTo(here) < 6 && enemy.type != RobotType.GARDENER && enemy.type!= RobotType.ARCHON) {
                     botEscapeVector = FastMath.minusVec(here,enemy.location);
-                    botEscapeVector = FastMath.multiplyVec(5 / here.distanceSquaredTo(enemy.location), botEscapeVector);
+                    botEscapeVector = FastMath.multiplyVec(botFearRating / here.distanceSquaredTo(enemy.location), botEscapeVector);
                     combinedEnemyForce = FastMath.addVec(combinedEnemyForce, botEscapeVector);
                 }
                 if (botCount > 10) {
@@ -200,7 +203,7 @@ public class Globals {
             int treeCount = 0;
             for (TreeInfo tree : adjacentTrees) {
                 botEscapeVector = FastMath.minusVec(here, tree.location);
-                botEscapeVector = FastMath.multiplyVec(0.15f / here.distanceSquaredTo(tree.location), botEscapeVector);
+                botEscapeVector = FastMath.multiplyVec(0.25f / here.distanceSquaredTo(tree.location), botEscapeVector);
                 // if the bot is trying to get somewhere, rotate tree force vector at right angles to path of travel
                 /*if (dest != null && dest != here) {
                     //get inverse vector from destination to here
@@ -246,13 +249,16 @@ public class Globals {
         return vectorResult;
     }
 
+    public static void getTargetPoint(RobotInfo target) {
+
+    }
+
     public static void tryShakingTrees(TreeInfo[] nearbyTrees) throws GameActionException{
         for (TreeInfo tree : nearbyTrees) {
             if (tree.getContainedBullets() > 0) {
                 int treeID = tree.getID();
                 if (rc.canShake(treeID)) {
                     rc.shake(treeID);
-                    rc.setIndicatorDot(tree.location, 0,180,180);
                     break;
                 }
             }
@@ -260,13 +266,25 @@ public class Globals {
     }
 
     public static void processSignals() throws GameActionException {
+        if (myType == RobotType.ARCHON || myType == RobotType.GARDENER) {
+            buildCount = rc.readBroadcast(Messaging.indexBuildCount);
+        }
         myUnitCount = Messaging.getMyUnitCount();
-        enemyTarget = Messaging.mapLocFromInt(rc.readBroadcast(Messaging.indexEnemyLocation));
+        int enemyLocationData = rc.readBroadcast(Messaging.indexEnemyLocation);
+        enemyTarget = Messaging.mapLocFromInt(enemyLocationData);
+        enemyTargetAge = Messaging.mapLocAgeFromInt(enemyLocationData);
     }
 
 
-    public static void leaderOnlyBehaviours() {
-
+    public static void leaderOnlyBehaviours() throws GameActionException {
+        if (iAmLeader && roundNum % 20 == 0) {
+            Navigation.updateVectorMap();
+        }
+        //Navigation.checkUpdateConditions();
+        //Navigation.gatherMapInfo();
+        //Navigation.calculateGrids();
+        //Navigation.RunPathfinding();
+        //Navigation.postGrids();
     }
 
 }

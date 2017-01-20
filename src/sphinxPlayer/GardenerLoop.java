@@ -1,8 +1,7 @@
-package testPlayer;
-import battlecode.common.*;
+package sphinxPlayer;
 
+import battlecode.common.*;
 import static java.lang.Math.PI;
-import static jdk.nashorn.internal.objects.NativeMath.random;
 
 /**
  * Created by Celeron on 1/10/2017.
@@ -18,18 +17,8 @@ public class GardenerLoop extends Globals {
     private static MapLocation spawnLoc;
     private static MapLocation dest;
 
-    public static void loop() {
-        while (true) {
-            try {
-                Globals.update();
-                runBehaviour();
-            } catch (Exception e) {
-                try {rc.setIndicatorDot(here,100,100,100);}
-                catch(Exception E) {};
-                e.printStackTrace();
-            }
-            Clock.yield();
-        }
+    public static void loop() throws GameActionException {
+        runBehaviour();
     }
 
     private static void runBehaviour() throws GameActionException {
@@ -38,7 +27,7 @@ public class GardenerLoop extends Globals {
 
         if (!reachedBuildPoint) {
             chooseAndMoveToBuildSpot();
-            tryMove(chooseSafeLocation(dest, 1),45,3);
+            tryMove(chooseSafeLocation(dest, 1),25,5);
         }
 
         if (reachedBuildPoint) {
